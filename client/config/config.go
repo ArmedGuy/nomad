@@ -179,6 +179,14 @@ type Config struct {
 	// NoHostUUID disables using the host's UUID and will force generation of a
 	// random UUID.
 	NoHostUUID bool
+
+	// DisableTaggedMetrics determines whether metrics will be displayed via a
+	// key/value/tag format, or simply a key/value format
+	DisableTaggedMetrics bool
+
+	// BackwardsCompatibleMetrics determines whether to show methods of
+	// displaying metrics for older verions, or to only show the new format
+	BackwardsCompatibleMetrics bool
 }
 
 func (c *Config) Copy() *Config {
@@ -196,20 +204,22 @@ func (c *Config) Copy() *Config {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Version:                 version.GetVersion(),
-		VaultConfig:             config.DefaultVaultConfig(),
-		ConsulConfig:            config.DefaultConsulConfig(),
-		LogOutput:               os.Stderr,
-		Region:                  "global",
-		StatsCollectionInterval: 1 * time.Second,
-		TLSConfig:               &config.TLSConfig{},
-		LogLevel:                "DEBUG",
-		GCInterval:              1 * time.Minute,
-		GCParallelDestroys:      2,
-		GCDiskUsageThreshold:    80,
-		GCInodeUsageThreshold:   70,
-		GCMaxAllocs:             50,
-		NoHostUUID:              true,
+		Version:                    version.GetVersion(),
+		VaultConfig:                config.DefaultVaultConfig(),
+		ConsulConfig:               config.DefaultConsulConfig(),
+		LogOutput:                  os.Stderr,
+		Region:                     "global",
+		StatsCollectionInterval:    1 * time.Second,
+		TLSConfig:                  &config.TLSConfig{},
+		LogLevel:                   "DEBUG",
+		GCInterval:                 1 * time.Minute,
+		GCParallelDestroys:         2,
+		GCDiskUsageThreshold:       80,
+		GCInodeUsageThreshold:      70,
+		GCMaxAllocs:                50,
+		NoHostUUID:                 true,
+		DisableTaggedMetrics:       false,
+		BackwardsCompatibleMetrics: false,
 	}
 }
 
