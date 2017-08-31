@@ -342,7 +342,6 @@ type blockingOptions struct {
 // blockingRPC is used for queries that need to wait for a
 // minimum index. This is used to block and wait for changes.
 func (s *Server) blockingRPC(opts *blockingOptions) error {
-	var deadline time.Time
 	ctx := context.Background()
 	var cancel context.CancelFunc
 	var state *state.StateStore
@@ -363,8 +362,7 @@ func (s *Server) blockingRPC(opts *blockingOptions) error {
 	opts.queryOpts.MaxQueryTime += lib.RandomStagger(opts.queryOpts.MaxQueryTime / jitterFraction)
 
 	// Setup a query timeout
-	deadline = time.Now().Add(opts.queryOpts.MaxQueryTime)
-	ctx, cancel = context.WithDeadline(context.Background(), deadline)
+	ctx, cancel = context.WithTimeout(context.Background(), opts.queryOpts.MaxQueryTime)
 	defer cancel()
 
 RUN_QUERY:
@@ -397,7 +395,7 @@ RUN_QUERY:
 
 	// Check for minimum query time
 	if err == nil && opts.queryOpts.MinQueryIndex > 0 && opts.queryMeta.Index <= opts.queryOpts.MinQueryIndex {
-		if expired := ws.WatchCtx(ctx); !expired {
+		if err := ws.WatchCtx(ctx); err == nil {
 			goto RUN_QUERY
 		}
 	}
