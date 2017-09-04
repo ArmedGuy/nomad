@@ -288,10 +288,6 @@ func NewClient(cfg *config.Config, consulCatalog consul.CatalogAPI, consulServic
 	// Start collecting stats
 	go c.emitStats()
 
-	// Assign labels at the latest possible moment so the information expected
-	// is ready
-	c.baseLabels = []metrics.Label{{Name: "node_id", Value: c.Node().ID}, {Name: "datacenter", Value: c.Node().Datacenter}}
-
 	c.logger.Printf("[INFO] client: Node ID %q", c.Node().ID)
 	return c, nil
 }
@@ -1843,6 +1839,10 @@ DISCOLOOP:
 
 // emitStats collects host resource usage stats periodically
 func (c *Client) emitStats() {
+	// Assign labels directly before emitting stats so the information expected
+	// is ready
+	c.baseLabels = []metrics.Label{{Name: "node_id", Value: c.Node().ID}, {Name: "datacenter", Value: c.Node().Datacenter}}
+
 	// Start collecting host stats right away and then keep collecting every
 	// collection interval
 	next := time.NewTimer(0)
@@ -1869,6 +1869,7 @@ func (c *Client) emitStats() {
 	}
 }
 
+// setGaugeForMemoryStats proxies metrics for memory specific statistics
 func (c *Client) setGaugeForMemoryStats(nodeID string, hStats *stats.HostStats) {
 	if !c.config.DisableTaggedMetrics {
 		metrics.SetGaugeWithLabels([]string{"client", "host", "memory", "total"}, float32(hStats.Memory.Total), c.baseLabels)
@@ -1885,6 +1886,7 @@ func (c *Client) setGaugeForMemoryStats(nodeID string, hStats *stats.HostStats) 
 	}
 }
 
+// setGaugeForCPUStats proxies metrics for CPU specific statistics
 func (c *Client) setGaugeForCPUStats(nodeID string, hStats *stats.HostStats) {
 	for _, cpu := range hStats.CPU {
 		if !c.config.DisableTaggedMetrics {
@@ -1905,6 +1907,7 @@ func (c *Client) setGaugeForCPUStats(nodeID string, hStats *stats.HostStats) {
 	}
 }
 
+// setGaugeForDiskStats proxies metrics for disk specific statistics
 func (c *Client) setGaugeForDiskStats(nodeID string, hStats *stats.HostStats) {
 	for _, disk := range hStats.DiskStats {
 		if !c.config.DisableTaggedMetrics {
@@ -1927,6 +1930,7 @@ func (c *Client) setGaugeForDiskStats(nodeID string, hStats *stats.HostStats) {
 	}
 }
 
+// setGaugeForAllocationStats proxies metrics for allocation specific statistics
 func (c *Client) setGaugeForAllocationStats(nodeID string) {
 	node := c.configCopy.Node
 	c.configLock.RUnlock()
