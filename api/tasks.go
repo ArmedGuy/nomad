@@ -90,12 +90,19 @@ type ServiceCheck struct {
 	Path          string
 	Protocol      string
 	PortLabel     string `mapstructure:"port"`
+	AddressMode   string `mapstructure:"address_mode"`
 	Interval      time.Duration
 	Timeout       time.Duration
 	InitialStatus string `mapstructure:"initial_status"`
 	TLSSkipVerify bool   `mapstructure:"tls_skip_verify"`
 	Header        map[string][]string
 	Method        string
+}
+
+func (c *ServiceCheck) Canonicalize() {
+	if c.AddressMode == "" {
+		c.AddressMode = "auto"
+	}
 }
 
 // The Service model represents a Consul service definition
@@ -116,6 +123,10 @@ func (s *Service) Canonicalize(t *Task, tg *TaskGroup, job *Job) {
 	// Default to AddressModeAuto
 	if s.AddressMode == "" {
 		s.AddressMode = "auto"
+	}
+
+	for _, c := range s.Checks {
+		c.Canonicalize()
 	}
 }
 

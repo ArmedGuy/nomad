@@ -2762,6 +2762,7 @@ type ServiceCheck struct {
 	Path          string              // path of the health check url for http type check
 	Protocol      string              // Protocol to use if check is http, defaults to http
 	PortLabel     string              // The port to use for tcp/http checks
+	AddressMode   string              // Specify if check should check towards host ip:port or user driver provided
 	Interval      time.Duration       // Interval of the check
 	Timeout       time.Duration       // Timeout of the response from the check before consul fails the check
 	InitialStatus string              // Initial status of the check
@@ -2870,6 +2871,7 @@ func (sc *ServiceCheck) Hash(serviceID string) string {
 	io.WriteString(h, sc.Path)
 	io.WriteString(h, sc.Protocol)
 	io.WriteString(h, sc.PortLabel)
+	io.WriteString(h, sc.AddressMode)
 	io.WriteString(h, sc.Interval.String())
 	io.WriteString(h, sc.Timeout.String())
 	io.WriteString(h, sc.Method)
@@ -2987,6 +2989,12 @@ func (s *Service) Validate() error {
 		if s.PortLabel == "" && c.RequiresPort() {
 			mErr.Errors = append(mErr.Errors, fmt.Errorf("check %s invalid: check requires a port but the service %+q has no port", c.Name, s.Name))
 			continue
+		}
+		switch c.AddressMode {
+		case "", AddressModeAuto, AddressModeHost, AddressModeDriver:
+			// OK
+		default:
+			mErr.Errors = append(mErr.Errors, fmt.Errorf("check address_mode must be %q, %q, or %q; not %q", AddressModeAuto, AddressModeHost, AddressModeDriver, c.AddressMode))
 		}
 
 		if err := c.validate(); err != nil {

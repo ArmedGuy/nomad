@@ -638,7 +638,7 @@ func (c *ServiceClient) checkRegs(ops *operations, allocID, serviceID string, se
 			// Default to the service's port label
 			portLabel = service.PortLabel
 		}
-		addrMode := service.AddressMode
+		addrMode := check.AddressMode
 		if addrMode == structs.AddressModeAuto {
 			if net.Advertise() {
 				addrMode = structs.AddressModeDriver
