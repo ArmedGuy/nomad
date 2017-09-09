@@ -633,13 +633,28 @@ func (c *ServiceClient) checkRegs(ops *operations, allocID, serviceID string, se
 
 		}
 
-		// Checks should always use the host ip:port
 		portLabel := check.PortLabel
 		if portLabel == "" {
 			// Default to the service's port label
 			portLabel = service.PortLabel
 		}
+		addrMode := service.AddressMode
+		if addrMode == structs.AddressModeAuto {
+			if net.Advertise() {
+				addrMode = structs.AddressModeDriver
+			} else {
+				// No driver network or shouldn't default to driver's network
+				addrMode = structs.AddressModeHost
+			}
+		}
 		ip, port := task.Resources.Networks.Port(portLabel)
+		if addrMode == structs.AddressModeDriver {
+			if net == nil {
+				return nil, fmt.Errorf("check %s cannot use driver's IP because driver didn't set one", checkID)
+			}
+			ip = net.IP
+			port = net.PortMap[portLabel]
+		}
 		checkReg, err := createCheckReg(serviceID, checkID, check, ip, port)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add check %q: %v", check.Name, err)
