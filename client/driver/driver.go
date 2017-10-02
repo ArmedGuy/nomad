@@ -27,6 +27,7 @@ var (
 		"exec":     NewExecDriver,
 		"raw_exec": NewRawExecDriver,
 		"java":     NewJavaDriver,
+		"dotnet":   NewDotnetDriver,
 		"qemu":     NewQemuDriver,
 		"rkt":      NewRktDriver,
 	}
