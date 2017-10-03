@@ -1,4 +1,4 @@
-package dDotnetr
+package driver
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
@@ -125,7 +124,7 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 		return false, nil
 	}
 
-	// 'dotnet -version' returns output on Stderr typically.
+	// 'dotnet --version' returns output on Stderr typically.
 	// Check stdout, but it's probably empty
 	var infoString string
 	if out.String() != "" {
