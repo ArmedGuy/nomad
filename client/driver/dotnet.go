@@ -113,9 +113,12 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 	// Find dotnet version
 	var out bytes.Buffer
 	var erOut bytes.Buffer
+	env := os.Environ()
+	env = append(env, "HOME=/tmp")
 	cmd := exec.Command("dotnet", "--version")
 	cmd.Stdout = &out
 	cmd.Stderr = &erOut
+	cmd.Env = env
 	err := cmd.Run()
 	if err != nil {
 		// assume Dotnet wasn't found
@@ -141,12 +144,14 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 		}
 		delete(node.Attributes, dotnetDriverAttr)
 		d.fingerprintSuccess = helper.BoolToPtr(false)
+		d.logger.Println("[DEBUG] driver.dotnet: cant determine version")
 		return false, nil
 	}
 
 	node.Attributes[dotnetDriverAttr] = "1"
 	node.Attributes["driver.dotnet.version"] = infoString
 	d.fingerprintSuccess = helper.BoolToPtr(true)
+	d.logger.Println("[INFO] driver.dotnet: successfully fingerprinted")
 
 	return true, nil
 }
@@ -184,7 +189,7 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 
 	// Add the dll
 	if driverConfig.DllPath != "" {
-		args = append(args, "run", driverConfig.DllPath)
+		args = append(args, "exec", driverConfig.DllPath)
 	}
 
 	// Add any args
@@ -202,6 +207,8 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 	if err != nil {
 		return nil, err
 	}
+	
+	ctx.TaskEnv.EnvMap["HOME"] = "local/"
 
 	// Set the context
 	executorCtx := &executor.ExecutorContext{
