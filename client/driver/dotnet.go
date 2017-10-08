@@ -114,7 +114,7 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 	var out bytes.Buffer
 	var erOut bytes.Buffer
 	env := os.Environ()
-	env = append(env, "HOME=/tmp")
+	env = append(env, "DOTNET_PRINT_TELEMETRY_MESSAGE=0", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1")
 	cmd := exec.Command("dotnet", "--version")
 	cmd.Stdout = &out
 	cmd.Stderr = &erOut
@@ -208,7 +208,8 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 		return nil, err
 	}
 	
-	ctx.TaskEnv.EnvMap["HOME"] = "local/"
+	ctx.TaskEnv.EnvMap["DOTNET_PRINT_TELEMETRY_MESSAGE"] = "0"
+	ctx.TaskEnv.EnvMap["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
 
 	// Set the context
 	executorCtx := &executor.ExecutorContext{
