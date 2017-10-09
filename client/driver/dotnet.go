@@ -114,6 +114,7 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 	var out bytes.Buffer
 	var erOut bytes.Buffer
 	env := os.Environ()
+	// append environment variables as dotnet isn't super portable
 	env = append(env, "HOME=/tmp", "DOTNET_PRINT_TELEMETRY_MESSAGE=0", "DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1")
 	cmd := exec.Command("dotnet", "--version")
 	cmd.Stdout = &out
@@ -127,8 +128,8 @@ func (d *DotnetDriver) Fingerprint(cfg *config.Config, node *structs.Node) (bool
 		return false, nil
 	}
 
-	// 'dotnet --version' returns output on Stderr typically.
-	// Check stdout, but it's probably empty
+	// 'dotnet --version' returns a version number
+	// Check both stdout and stderr for version number or error output
 	var infoString string
 	if out.String() != "" {
 		infoString = out.String()
@@ -187,7 +188,7 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 
 	args := []string{}
 
-	// Add the dll
+	// executing a managed runtime dll is done by calling dotnet exec app.dll
 	if driverConfig.DllPath != "" {
 		args = append(args, "exec", driverConfig.DllPath)
 	}
@@ -207,7 +208,7 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 	if err != nil {
 		return nil, err
 	}
-	
+	// once again, add task env variables as dotnet executable isn't very portable
 	ctx.TaskEnv.EnvMap["HOME"] = "local/"
 	ctx.TaskEnv.EnvMap["DOTNET_PRINT_TELEMETRY_MESSAGE"] = "0"
 	ctx.TaskEnv.EnvMap["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1"
@@ -231,6 +232,7 @@ func (d *DotnetDriver) Start(ctx *ExecContext, task *structs.Task) (*StartRespon
 		return nil, err
 	}
 
+	// build command to be executed
 	execCmd := &executor.ExecCommand{
 		Cmd:            absPath,
 		Args:           args,
