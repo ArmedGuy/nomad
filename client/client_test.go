@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/nomad/client/fingerprint"
 	"github.com/hashicorp/nomad/command/agent/consul"
 	"github.com/hashicorp/nomad/helper"
+	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/nomad"
 	"github.com/hashicorp/nomad/nomad/mock"
 	"github.com/hashicorp/nomad/nomad/structs"
@@ -137,7 +138,7 @@ func TestClient_StartStop(t *testing.T) {
 	}
 }
 
-// Certain labels for metrics are dependant on client intial setup. This tests
+// Certain labels for metrics are dependant on client initial setup. This tests
 // that the client has properly initialized before we assign values to labels
 func TestClient_BaseLabels(t *testing.T) {
 	t.Parallel()
@@ -908,7 +909,7 @@ func TestClient_BlockedAllocations(t *testing.T) {
 
 	// Add a new chained alloc
 	alloc2 := alloc.Copy()
-	alloc2.ID = structs.GenerateUUID()
+	alloc2.ID = uuid.Generate()
 	alloc2.Job = alloc.Job
 	alloc2.JobID = alloc.JobID
 	alloc2.PreviousAllocation = alloc.ID

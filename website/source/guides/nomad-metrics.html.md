@@ -15,7 +15,7 @@ insights about a cluster. It is easy to get lost in a sea of logs!
 
 This guide explains how to set up configuration for Prometheus and Grafana to
 integrate with a Nomad cluster. While this introduces the basics to get a
-dashboard up and running, Nomad exposes a wide vareity of metrics, which can be
+dashboard up and running, Nomad exposes a wide variety of metrics, which can be
 explored via both Grafana and Prometheus.
 
 ## What metrics tools can be integrated with Nomad?
@@ -36,10 +36,10 @@ Configurations for Grafana and Prometheus can be found in the
 For Prometheus, first follow Prometheus's [Getting Started
 Guide](https://prometheus.io/docs/introduction/getting_started/) in order to
 set up a Prometheus server. Next, use the (Nomad Prometheus
-Configuration)[https://github.com/hashicorp/tree/master/noamd/integrations/prometheus/prometheus.yml]
+Configuration)[https://github.com/hashicorp/nomad/tree/master/integrations/prometheus/prometheus.yml]
 in order to configure Prometheus to talk to a Consul agent to fetch information
 about the Nomad cluster. See the
-[README](https://github.com/hashicorp/tree/master/nomad/integrations/prometheus/README.md)
+[README](https://github.com/hashicorp/nomad/tree/master/integrations/prometheus/README.md)
 for more information.
 
 For Grafana, follow Grafana's [Getting

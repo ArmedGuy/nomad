@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/nomad/client/driver/env"
 	cstructs "github.com/hashicorp/nomad/client/structs"
 	"github.com/hashicorp/nomad/client/testutil"
+	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/nomad/mock"
 	"github.com/hashicorp/nomad/nomad/structs"
 	tu "github.com/hashicorp/nomad/testutil"
@@ -68,7 +69,7 @@ func dockerTask() (*structs.Task, int, int) {
 			MemoryMB: 256,
 			CPU:      512,
 			Networks: []*structs.NetworkResource{
-				&structs.NetworkResource{
+				{
 					IP:            "127.0.0.1",
 					ReservedPorts: []structs.Port{{Label: "main", Value: docker_reserved}},
 					DynamicPorts:  []structs.Port{{Label: "REDIS", Value: docker_dynamic}},
@@ -772,7 +773,7 @@ func TestDockerDriver_Labels(t *testing.T) {
 	}
 	task, _, _ := dockerTask()
 	task.Config["labels"] = []map[string]string{
-		map[string]string{
+		{
 			"label1": "value1",
 			"label2": "value2",
 		},
@@ -955,10 +956,10 @@ func TestDockerDriver_PortsNoMap(t *testing.T) {
 
 	// Verify that the correct ports are EXPOSED
 	expectedExposedPorts := map[docker.Port]struct{}{
-		docker.Port(fmt.Sprintf("%d/tcp", res)): struct{}{},
-		docker.Port(fmt.Sprintf("%d/udp", res)): struct{}{},
-		docker.Port(fmt.Sprintf("%d/tcp", dyn)): struct{}{},
-		docker.Port(fmt.Sprintf("%d/udp", dyn)): struct{}{},
+		docker.Port(fmt.Sprintf("%d/tcp", res)): {},
+		docker.Port(fmt.Sprintf("%d/udp", res)): {},
+		docker.Port(fmt.Sprintf("%d/tcp", dyn)): {},
+		docker.Port(fmt.Sprintf("%d/udp", dyn)): {},
 	}
 
 	if !reflect.DeepEqual(container.Config.ExposedPorts, expectedExposedPorts) {
@@ -967,10 +968,10 @@ func TestDockerDriver_PortsNoMap(t *testing.T) {
 
 	// Verify that the correct ports are FORWARDED
 	expectedPortBindings := map[docker.Port][]docker.PortBinding{
-		docker.Port(fmt.Sprintf("%d/tcp", res)): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
-		docker.Port(fmt.Sprintf("%d/udp", res)): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
-		docker.Port(fmt.Sprintf("%d/tcp", dyn)): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
-		docker.Port(fmt.Sprintf("%d/udp", dyn)): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
+		docker.Port(fmt.Sprintf("%d/tcp", res)): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
+		docker.Port(fmt.Sprintf("%d/udp", res)): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
+		docker.Port(fmt.Sprintf("%d/tcp", dyn)): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
+		docker.Port(fmt.Sprintf("%d/udp", dyn)): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
 	}
 
 	if !reflect.DeepEqual(container.HostConfig.PortBindings, expectedPortBindings) {
@@ -996,7 +997,7 @@ func TestDockerDriver_PortsMapping(t *testing.T) {
 	}
 	task, res, dyn := dockerTask()
 	task.Config["port_map"] = []map[string]string{
-		map[string]string{
+		{
 			"main":  "8080",
 			"REDIS": "6379",
 		},
@@ -1014,10 +1015,10 @@ func TestDockerDriver_PortsMapping(t *testing.T) {
 
 	// Verify that the correct ports are EXPOSED
 	expectedExposedPorts := map[docker.Port]struct{}{
-		docker.Port("8080/tcp"): struct{}{},
-		docker.Port("8080/udp"): struct{}{},
-		docker.Port("6379/tcp"): struct{}{},
-		docker.Port("6379/udp"): struct{}{},
+		docker.Port("8080/tcp"): {},
+		docker.Port("8080/udp"): {},
+		docker.Port("6379/tcp"): {},
+		docker.Port("6379/udp"): {},
 	}
 
 	if !reflect.DeepEqual(container.Config.ExposedPorts, expectedExposedPorts) {
@@ -1026,10 +1027,10 @@ func TestDockerDriver_PortsMapping(t *testing.T) {
 
 	// Verify that the correct ports are FORWARDED
 	expectedPortBindings := map[docker.Port][]docker.PortBinding{
-		docker.Port("8080/tcp"): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
-		docker.Port("8080/udp"): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
-		docker.Port("6379/tcp"): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
-		docker.Port("6379/udp"): []docker.PortBinding{docker.PortBinding{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
+		docker.Port("8080/tcp"): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
+		docker.Port("8080/udp"): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", res)}},
+		docker.Port("6379/tcp"): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
+		docker.Port("6379/udp"): {{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%d", dyn)}},
 	}
 
 	if !reflect.DeepEqual(container.HostConfig.PortBindings, expectedPortBindings) {
@@ -1234,7 +1235,7 @@ func setupDockerVolumes(t *testing.T, cfg *config.Config, hostpath string) (*str
 	}
 
 	// Build alloc and task directory structure
-	allocDir := allocdir.NewAllocDir(testLogger(), filepath.Join(cfg.AllocDir, structs.GenerateUUID()))
+	allocDir := allocdir.NewAllocDir(testLogger(), filepath.Join(cfg.AllocDir, uuid.Generate()))
 	if err := allocDir.Build(); err != nil {
 		t.Fatalf("failed to build alloc dir: %v", err)
 	}

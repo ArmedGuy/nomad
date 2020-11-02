@@ -11,6 +11,7 @@ import (
 	"time"
 
 	memdb "github.com/hashicorp/go-memdb"
+	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/nomad/structs"
 )
 
@@ -62,7 +63,7 @@ func (s *Server) DispatchJob(job *structs.Job) (*structs.Evaluation, error) {
 
 	// Create a new evaluation
 	eval := &structs.Evaluation{
-		ID:             structs.GenerateUUID(),
+		ID:             uuid.Generate(),
 		Namespace:      job.Namespace,
 		Priority:       job.Priority,
 		Type:           job.Type,
@@ -190,7 +191,7 @@ func (p *PeriodicDispatch) Tracked() []*structs.Job {
 
 // Add begins tracking of a periodic job. If it is already tracked, it acts as
 // an update to the jobs periodic spec. The method returns whether the job was
-// added and any error that may have occured.
+// added and any error that may have occurred.
 func (p *PeriodicDispatch) Add(job *structs.Job) (added bool, err error) {
 	p.l.Lock()
 	defer p.l.Unlock()

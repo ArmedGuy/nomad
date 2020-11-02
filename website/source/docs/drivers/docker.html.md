@@ -122,18 +122,15 @@ The `docker` driver supports the following configuration in the job spec.  Only
     }
     ```
 
-* `load` - (Optional) A list of paths to image archive files. If
-  this key is not specified, Nomad assumes the `image` is hosted on a repository
-  and attempts to pull the image. The `artifact` blocks can be specified to
-  download each of the archive files. The equivalent of `docker load -i path`
-  would be run on each of the archive files.
+* `load` - (Optional) Load an image from a `tar` archive file instead of from a
+  remote repository. Equivalent to the `docker load -i <filename>` command.
 
     ```hcl
     artifact {
       source = "http://path.to/redis.tar"
     }
     config {
-      load = ["redis.tar"]
+      load = "redis.tar"
       image = "redis"
     }
     ```
@@ -614,9 +611,9 @@ need a higher degree of isolation between processes for security or other
 reasons, it is recommended to use full virtualization like
 [QEMU](/docs/drivers/qemu.html).
 
-## Docker For Mac Caveats
+## Docker for Mac Caveats
 
-Docker For Mac runs docker inside a small VM and then allows access to parts of
+Docker for Mac runs Docker inside a small VM and then allows access to parts of
 the host filesystem into that VM. At present, nomad uses a syslog server bound to
 a Unix socket within a path that both the host and the VM can access to forward
 log messages back to nomad. But at present, Docker For Mac does not work for
@@ -628,3 +625,11 @@ logs will be available to nomad. Users must use the native docker facilities to
 examine the logs of any jobs running under docker.
 
 In the future, we will resolve this issue, one way or another.
+
+## Docker for Windows Caveats
+
+Docker for Windows only supports running Windows containers. Because Docker for
+Windows is relatively new and rapidly evolving you may want to consult the
+[list of relevant issues on GitHub][WinIssues].
+
+[WinIssues]: https://github.com/hashicorp/nomad/issues?q=is%3Aopen+is%3Aissue+label%3Adriver%2Fdocker+label%3Aplatform-windows

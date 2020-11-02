@@ -15,6 +15,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/hashicorp/nomad/helper"
+	"github.com/hashicorp/nomad/helper/uuid"
 	"github.com/hashicorp/nomad/nomad/mock"
 	"github.com/hashicorp/nomad/nomad/structs"
 	"github.com/hashicorp/nomad/nomad/structs/config"
@@ -539,7 +540,7 @@ func TestVaultClient_LookupToken_Invalid(t *testing.T) {
 	conf := &config.VaultConfig{
 		Enabled: &tr,
 		Addr:    "http://foobar:12345",
-		Token:   structs.GenerateUUID(),
+		Token:   uuid.Generate(),
 	}
 
 	// Enable vault but use a bad address so it never establishes a conn
@@ -1024,7 +1025,7 @@ func TestVaultClient_CreateToken_Prestart(t *testing.T) {
 	t.Parallel()
 	vconfig := &config.VaultConfig{
 		Enabled: helper.BoolToPtr(true),
-		Token:   structs.GenerateUUID(),
+		Token:   uuid.Generate(),
 		Addr:    "http://127.0.0.1:0",
 	}
 
@@ -1057,7 +1058,7 @@ func TestVaultClient_RevokeTokens_PreEstablishs(t *testing.T) {
 	t.Parallel()
 	vconfig := &config.VaultConfig{
 		Enabled: helper.BoolToPtr(true),
-		Token:   structs.GenerateUUID(),
+		Token:   uuid.Generate(),
 		Addr:    "http://127.0.0.1:0",
 	}
 	logger := log.New(os.Stderr, "", log.LstdFlags)
@@ -1140,8 +1141,8 @@ func TestVaultClient_RevokeTokens_Root(t *testing.T) {
 
 	// Create two VaultAccessors
 	vas := []*structs.VaultAccessor{
-		&structs.VaultAccessor{Accessor: t1.Auth.Accessor},
-		&structs.VaultAccessor{Accessor: t2.Auth.Accessor},
+		{Accessor: t1.Auth.Accessor},
+		{Accessor: t2.Auth.Accessor},
 	}
 
 	// Issue a token revocation
@@ -1208,8 +1209,8 @@ func TestVaultClient_RevokeTokens_Role(t *testing.T) {
 
 	// Create two VaultAccessors
 	vas := []*structs.VaultAccessor{
-		&structs.VaultAccessor{Accessor: t1.Auth.Accessor},
-		&structs.VaultAccessor{Accessor: t2.Auth.Accessor},
+		{Accessor: t1.Auth.Accessor},
+		{Accessor: t2.Auth.Accessor},
 	}
 
 	// Issue a token revocation
