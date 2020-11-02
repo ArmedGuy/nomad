@@ -88,7 +88,8 @@ var (
 	// taskConfigSpec is the hcl specification for the driver config section of
 	// a taskConfig within a job. It is returned in the TaskConfigSchema RPC
 	taskConfigSpec = hclspec.NewObject(map[string]*hclspec.Spec{
-		"image_path":        hclspec.NewAttr("image_path", "string", true),
+		"image_path":        hclspec.NewAttr("image_path", "string", false),
+		"raw_args_only":     hclspec.NewAttr("raw_args_only", "bool", false),
 		"accelerator":       hclspec.NewAttr("accelerator", "string", false),
 		"graceful_shutdown": hclspec.NewAttr("graceful_shutdown", "bool", false),
 		"args":              hclspec.NewAttr("args", "list(string)", false),
@@ -110,6 +111,7 @@ var (
 // TaskConfig is the driver configuration of a taskConfig within a job
 type TaskConfig struct {
 	ImagePath        string             `codec:"image_path"`
+	RawArgsOnly      bool               `codec:"raw_args_only"` // If true, use only arguments provided, clear all internal ones.
 	Accelerator      string             `codec:"accelerator"`
 	Args             []string           `codec:"args"`     // extra arguments to qemu executable
 	PortMap          hclutils.MapStrInt `codec:"port_map"` // A map of host port and the port name defined in the image manifest file
@@ -307,111 +309,125 @@ func (d *Driver) StartTask(cfg *drivers.TaskConfig) (*drivers.TaskHandle, *drive
 	handle := drivers.NewTaskHandle(taskHandleVersion)
 	handle.Config = cfg
 
-	// Get the image source
-	vmPath := driverConfig.ImagePath
-	if vmPath == "" {
-		return nil, nil, fmt.Errorf("image_path must be set")
-	}
-	vmID := filepath.Base(vmPath)
-
-	// Parse configuration arguments
-	// Create the base arguments
-	accelerator := "tcg"
-	if driverConfig.Accelerator != "" {
-		accelerator = driverConfig.Accelerator
-	}
-
-	mb := cfg.Resources.NomadResources.Memory.MemoryMB
-	if mb < 128 || mb > 4000000 {
-		return nil, nil, fmt.Errorf("Qemu memory assignment out of bounds")
-	}
-	mem := fmt.Sprintf("%dM", mb)
-
-	absPath, err := GetAbsolutePath("qemu-system-x86_64")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	args := []string{
-		absPath,
-		"-machine", "type=pc,accel=" + accelerator,
-		"-name", vmID,
-		"-m", mem,
-		"-drive", "file=" + vmPath,
-		"-nographic",
-	}
-
-	var monitorPath string
-	if driverConfig.GracefulShutdown {
-		if runtime.GOOS == "windows" {
-			return nil, nil, errors.New("QEMU graceful shutdown is unsupported on the Windows platform")
+	var args []string
+	var vmID string
+	if !driverConfig.RawArgsOnly {
+		// Get the image source
+		vmPath := driverConfig.ImagePath
+		if vmPath == "" {
+			return nil, nil, fmt.Errorf("image_path must be set")
 		}
-		// This socket will be used to manage the virtual machine (for example,
-		// to perform graceful shutdowns)
-		taskDir := filepath.Join(cfg.AllocDir, cfg.Name)
-		fingerPrint := d.buildFingerprint()
-		if fingerPrint.Attributes == nil {
-			return nil, nil, fmt.Errorf("unable to get qemu driver version from fingerprinted attributes")
+		vmID = filepath.Base(vmPath)
+
+		// Parse configuration arguments
+		// Create the base arguments
+		accelerator := "tcg"
+		if driverConfig.Accelerator != "" {
+			accelerator = driverConfig.Accelerator
 		}
-		monitorPath, err = d.getMonitorPath(taskDir, fingerPrint)
+
+		mb := cfg.Resources.NomadResources.Memory.MemoryMB
+		if mb < 128 || mb > 4000000 {
+			return nil, nil, fmt.Errorf("Qemu memory assignment out of bounds")
+		}
+		mem := fmt.Sprintf("%dM", mb)
+
+		absPath, err := GetAbsolutePath("qemu-system-x86_64")
 		if err != nil {
-			d.logger.Debug("could not get qemu monitor path", "error", err)
 			return nil, nil, err
 		}
-		d.logger.Debug("got monitor path", "monitorPath", monitorPath)
-		args = append(args, "-monitor", fmt.Sprintf("unix:%s,server,nowait", monitorPath))
-	}
 
-	// Add pass through arguments to qemu executable. A user can specify
-	// these arguments in driver task configuration. These arguments are
-	// passed directly to the qemu driver as command line options.
-	// For example, args = [ "-nodefconfig", "-nodefaults" ]
-	// This will allow a VM with embedded configuration to boot successfully.
-	args = append(args, driverConfig.Args...)
+		args = []string{
+			absPath,
+			"-machine", "type=pc,accel=" + accelerator,
+			"-name", vmID,
+			"-m", mem,
+			"-drive", "file=" + vmPath,
+			"-nographic",
+		}
 
-	// Check the Resources required Networks to add port mappings. If no resources
-	// are required, we assume the VM is a purely compute job and does not require
-	// the outside world to be able to reach it. VMs ran without port mappings can
-	// still reach out to the world, but without port mappings it is effectively
-	// firewalled
-	protocols := []string{"udp", "tcp"}
-	if len(cfg.Resources.NomadResources.Networks) > 0 {
-		// Loop through the port map and construct the hostfwd string, to map
-		// reserved ports to the ports listenting in the VM
-		// Ex: hostfwd=tcp::22000-:22,hostfwd=tcp::80-:8080
-		var forwarding []string
-		taskPorts := cfg.Resources.NomadResources.Networks[0].PortLabels()
-		for label, guest := range driverConfig.PortMap {
-			host, ok := taskPorts[label]
-			if !ok {
-				return nil, nil, fmt.Errorf("Unknown port label %q", label)
+		var monitorPath string
+		if driverConfig.GracefulShutdown {
+			if runtime.GOOS == "windows" {
+				return nil, nil, errors.New("QEMU graceful shutdown is unsupported on the Windows platform")
+			}
+			// This socket will be used to manage the virtual machine (for example,
+			// to perform graceful shutdowns)
+			taskDir := filepath.Join(cfg.AllocDir, cfg.Name)
+			fingerPrint := d.buildFingerprint()
+			if fingerPrint.Attributes == nil {
+				return nil, nil, fmt.Errorf("unable to get qemu driver version from fingerprinted attributes")
+			}
+			monitorPath, err = d.getMonitorPath(taskDir, fingerPrint)
+			if err != nil {
+				d.logger.Debug("could not get qemu monitor path", "error", err)
+				return nil, nil, err
+			}
+			d.logger.Debug("got monitor path", "monitorPath", monitorPath)
+			args = append(args, "-monitor", fmt.Sprintf("unix:%s,server,nowait", monitorPath))
+		}
+
+		// Add pass through arguments to qemu executable. A user can specify
+		// these arguments in driver task configuration. These arguments are
+		// passed directly to the qemu driver as command line options.
+		// For example, args = [ "-nodefconfig", "-nodefaults" ]
+		// This will allow a VM with embedded configuration to boot successfully.
+		args = append(args, driverConfig.Args...)
+
+		// Check the Resources required Networks to add port mappings. If no resources
+		// are required, we assume the VM is a purely compute job and does not require
+		// the outside world to be able to reach it. VMs ran without port mappings can
+		// still reach out to the world, but without port mappings it is effectively
+		// firewalled
+		protocols := []string{"udp", "tcp"}
+		if len(cfg.Resources.NomadResources.Networks) > 0 {
+			// Loop through the port map and construct the hostfwd string, to map
+			// reserved ports to the ports listenting in the VM
+			// Ex: hostfwd=tcp::22000-:22,hostfwd=tcp::80-:8080
+			var forwarding []string
+			taskPorts := cfg.Resources.NomadResources.Networks[0].PortLabels()
+			for label, guest := range driverConfig.PortMap {
+				host, ok := taskPorts[label]
+				if !ok {
+					return nil, nil, fmt.Errorf("Unknown port label %q", label)
+				}
+
+				for _, p := range protocols {
+					forwarding = append(forwarding, fmt.Sprintf("hostfwd=%s::%d-:%d", p, host, guest))
+				}
 			}
 
-			for _, p := range protocols {
-				forwarding = append(forwarding, fmt.Sprintf("hostfwd=%s::%d-:%d", p, host, guest))
+			if len(forwarding) != 0 {
+				args = append(args,
+					"-netdev",
+					fmt.Sprintf("user,id=user.0,%s", strings.Join(forwarding, ",")),
+					"-device", "virtio-net,netdev=user.0",
+				)
 			}
 		}
 
-		if len(forwarding) != 0 {
+		// If using KVM, add optimization args
+		if accelerator == "kvm" {
+			if runtime.GOOS == "windows" {
+				return nil, nil, errors.New("KVM accelerator is unsupported on the Windows platform")
+			}
 			args = append(args,
-				"-netdev",
-				fmt.Sprintf("user,id=user.0,%s", strings.Join(forwarding, ",")),
-				"-device", "virtio-net,netdev=user.0",
+				"-enable-kvm",
+				"-cpu", "host",
+				// Do we have cores information available to the Driver?
+				// "-smp", fmt.Sprintf("%d", cores),
 			)
 		}
-	}
+	} else {
+		// RawArgsOnly set, skip all internal arguments and use provided list
 
-	// If using KVM, add optimization args
-	if accelerator == "kvm" {
-		if runtime.GOOS == "windows" {
-			return nil, nil, errors.New("KVM accelerator is unsupported on the Windows platform")
-		}
-		args = append(args,
-			"-enable-kvm",
-			"-cpu", "host",
-			// Do we have cores information available to the Driver?
-			// "-smp", fmt.Sprintf("%d", cores),
-		)
+		// Add pass through arguments to qemu executable. A user can specify
+		// these arguments in driver task configuration. These arguments are
+		// passed directly to the qemu driver as command line options.
+		// For example, args = [ "-nodefconfig", "-nodefaults" ]
+		// This will allow a VM with embedded configuration to boot successfully.
+		args = driverConfig.Args
+		vmID = "raw_args"
 	}
 	d.logger.Debug("starting QemuVM command ", "args", strings.Join(args, " "))
 
